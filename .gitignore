@@ -1,0 +1,16 @@
+# Secrets and browser sessions
+.env
+.browser-profile/
+
+# Installed dependencies
+node_modules/
+playwright-report/
+test-results/
+*.log
+
+# Downloaded utility bills
+20??-??/
+
+# Local OS/editor noise
+.DS_Store
+Thumbs.db

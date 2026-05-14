@@ -1,0 +1,14 @@
+{
+  "name": "cleveland-water-bill-downloader",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "download": "node download-water-bills.mjs",
+    "download:visible": "set HEADLESS=false&& node download-water-bills.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "playwright": "^1.49.1"
+  }
+}
