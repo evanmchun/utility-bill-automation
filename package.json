@@ -1,0 +1,14 @@
+{
+  "name": "utility-bill-automation",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "drafts": "node create-gmail-drafts.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "imapflow": "^1.0.194",
+    "nodemailer": "^8.0.7"
+  }
+}
