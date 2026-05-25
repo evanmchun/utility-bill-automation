@@ -74,6 +74,14 @@ function billMonth(dateText) {
   return `${match[3]}-${MONTHS[match[1]]}`;
 }
 
+function billTimestamp(dateText) {
+  const match = dateText.match(/^([A-Z][a-z]{2})\s+(\d{1,2}),\s+(\d{4})$/);
+  if (!match || !MONTHS[match[1]]) {
+    throw new Error(`Could not parse bill date: ${dateText}`);
+  }
+  return Date.UTC(Number(match[3]), Number(MONTHS[match[1]]) - 1, Number(match[2]));
+}
+
 function safePart(value) {
   return value
     .replace(/[<>:"/\\|?*\u0000-\u001F]/g, ' ')
@@ -89,6 +97,7 @@ function parseBillLink(text, id) {
     text,
     dateText: match[1],
     month: billMonth(match[1]),
+    timestamp: billTimestamp(match[1]),
     account: match[2],
     amount: match[3]
   };
@@ -159,7 +168,33 @@ async function accountAddressMap(page) {
   return addresses;
 }
 
-async function downloadBill(page, bill, outputRoot) {
+function selectBillsForRun(bills, addresses, args) {
+  if (args.all) {
+    return bills;
+  }
+
+  const selected = [];
+  const accountNumbers = [...addresses.keys()];
+
+  for (const account of accountNumbers) {
+    const accountBills = bills
+      .filter((bill) => bill.account === account)
+      .sort((a, b) => b.timestamp - a.timestamp);
+    const targetBill = accountBills.find((bill) => bill.month === args.month);
+    const previousBill = accountBills.find((bill) => bill.month < args.month);
+    const fallbackBill = previousBill || accountBills[0];
+
+    if (targetBill) {
+      selected.push(targetBill);
+    } else if (fallbackBill) {
+      selected.push({ ...fallbackBill, fallbackForMonth: args.month });
+    }
+  }
+
+  return selected;
+}
+
+async function downloadBill(page, bill, outputRoot, folderMonth = bill.month) {
   await page.locator(`a[id="${bill.id}"]`).click();
   await page.waitForURL('**/ViewBill.aspx', { timeout: 45000 });
   await page.waitForLoadState('domcontentloaded');
@@ -175,7 +210,7 @@ async function downloadBill(page, bill, outputRoot) {
     throw new Error(`PDF request failed for account ${bill.account}: HTTP ${response.status()}`);
   }
 
-  const folder = path.resolve(outputRoot, bill.month);
+  const folder = path.resolve(outputRoot, folderMonth);
   await fs.mkdir(folder, { recursive: true });
 
   const addressPart = safePart(bill.address || bill.account);
@@ -204,14 +239,14 @@ async function main() {
 
     const addresses = await accountAddressMap(page);
     const rawLinks = await currentBillLinks(page);
-    const bills = rawLinks
+    const parsedBills = rawLinks
       .map((link) => parseBillLink(link.text, link.id))
       .filter(Boolean)
       .map((bill) => ({
         ...bill,
         address: addresses.get(bill.account)
-      }))
-      .filter((bill) => args.all || bill.month === args.month);
+      }));
+    const bills = selectBillsForRun(parsedBills, addresses, args);
 
     if (bills.length === 0) {
       if (args.debug) {
@@ -223,11 +258,15 @@ async function main() {
       console.log(args.all ? 'No bill links found.' : `No bill links found for ${args.month}.`);
       return;
     }
+    if (!args.all && bills.length !== 5) {
+      throw new Error(`Expected 5 property bills but found ${bills.length}.`);
+    }
 
     console.log(`Found ${bills.length} bill(s) to download.`);
     for (const bill of bills) {
-      const filePath = await downloadBill(page, bill, args.outputDir);
-      console.log(`Downloaded ${bill.account} ${bill.dateText}: ${filePath}`);
+      const filePath = await downloadBill(page, bill, args.outputDir, args.all ? bill.month : args.month);
+      const fallbackText = bill.fallbackForMonth ? ` (fallback for ${bill.fallbackForMonth})` : '';
+      console.log(`Downloaded ${bill.account} ${bill.dateText}${fallbackText}: ${filePath}`);
     }
   } finally {
     await context.close();
