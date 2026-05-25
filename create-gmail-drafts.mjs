@@ -113,6 +113,17 @@ async function main() {
     },
     {
       bodyName: 'sewer',
+      body: [
+        'Hi Crystal,',
+        '',
+        'Attached are the current sewer bills. Below is the link to the payment page.',
+        '',
+        'https://neorsd.ez-pay.io/Validate.aspx?BillerID=VXyerVgnqX',
+        '',
+        'Thanks,',
+        '',
+        'Jay'
+      ].join('\n'),
       folder: path.join(root, 'Sewer Bill', args.month),
       subject: `Sewer Bills - ${args.month}`,
       utilityLabel: 'Sewer'
@@ -143,7 +154,7 @@ async function main() {
         attachments,
         from: gmailAddress,
         subject: job.subject,
-        text: `Attached are the ${job.bodyName} bills for ${args.month}.`,
+        text: job.body || `Attached are the ${job.bodyName} bills for ${args.month}.`,
         to: recipient
       });
     }
