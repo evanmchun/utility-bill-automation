@@ -146,7 +146,7 @@ async function downloadBill(page, bill, outputRoot) {
   await fs.mkdir(folder, { recursive: true });
 
   const addressPart = safePart(bill.address || bill.account);
-  const filename = safePart(`${bill.dateText} - ${addressPart} - ${bill.account} - Cleveland Water - ${bill.amount}.pdf`);
+  const filename = safePart(`${bill.dateText} - ${addressPart} - Water - ${bill.amount}.pdf`);
   const filePath = path.join(folder, filename);
   await fs.writeFile(filePath, await response.body());
 
