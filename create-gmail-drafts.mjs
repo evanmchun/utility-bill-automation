@@ -107,6 +107,17 @@ async function main() {
   const jobs = [
     {
       bodyName: 'water',
+      body: [
+        'Hi Crystal,',
+        '',
+        'Attached are the current water bills. Below is the link to the payment page.',
+        '',
+        'https://clevelandwater51.ez-pay.io/validate.aspx?BillerID=otbEj1182A',
+        '',
+        'Thanks,',
+        '',
+        'Jay'
+      ].join('\n'),
       folder: path.join(root, 'Water Bill', args.month),
       subject: `Water Bills - ${args.month}`,
       utilityLabel: 'Water'
