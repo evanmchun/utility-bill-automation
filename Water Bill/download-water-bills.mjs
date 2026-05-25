@@ -105,6 +105,27 @@ async function currentBillLinks(page) {
     .filter((link) => link.id && /Bill\s*\d{10}\s*\$/.test(link.text)));
 }
 
+async function accountAddressMap(page) {
+  const bodyText = await page.locator('body').innerText();
+  const lines = bodyText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const addresses = new Map();
+
+  for (let i = 0; i < lines.length - 1; i += 1) {
+    const match = lines[i].match(/^Account Number:\s*(\d{10})$/);
+    if (match) {
+      const nextLine = lines[i + 1];
+      if (nextLine && !nextLine.includes(':')) {
+        addresses.set(match[1], nextLine);
+      }
+    }
+  }
+
+  return addresses;
+}
+
 async function downloadBill(page, bill, outputRoot) {
   await page.locator(`a[id="${bill.id}"]`).click();
   await page.waitForURL('**/ViewBill.aspx', { timeout: 45000 });
@@ -124,7 +145,8 @@ async function downloadBill(page, bill, outputRoot) {
   const folder = path.resolve(outputRoot, bill.month);
   await fs.mkdir(folder, { recursive: true });
 
-  const filename = safePart(`${bill.dateText} - ${bill.account} - Cleveland Water - ${bill.amount}.pdf`);
+  const addressPart = safePart(bill.address || bill.account);
+  const filename = safePart(`${bill.dateText} - ${addressPart} - ${bill.account} - Cleveland Water - ${bill.amount}.pdf`);
   const filePath = path.join(folder, filename);
   await fs.writeFile(filePath, await response.body());
 
@@ -145,10 +167,15 @@ async function main() {
     await loginToClevelandWater(page, username, password);
     await openKubra(page);
 
+    const addresses = await accountAddressMap(page);
     const rawLinks = await currentBillLinks(page);
     const bills = rawLinks
       .map((link) => parseBillLink(link.text, link.id))
       .filter(Boolean)
+      .map((bill) => ({
+        ...bill,
+        address: addresses.get(bill.account)
+      }))
       .filter((bill) => args.all || bill.month === args.month);
 
     if (bills.length === 0) {
