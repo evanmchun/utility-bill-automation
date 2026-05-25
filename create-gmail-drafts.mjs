@@ -28,14 +28,18 @@ function requireEnv(name) {
   return value;
 }
 
-async function pdfAttachments(folder) {
+async function pdfAttachments(folder, utilityLabel) {
   const entries = await fs.readdir(folder, { withFileTypes: true }).catch((error) => {
     if (error.code === 'ENOENT') return [];
     throw error;
   });
 
   return entries
-    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith('.pdf'))
+    .filter((entry) =>
+      entry.isFile() &&
+      entry.name.toLowerCase().endsWith('.pdf') &&
+      entry.name.includes(` - ${utilityLabel} - `)
+    )
     .map((entry) => ({
       filename: entry.name,
       path: path.join(folder, entry.name)
@@ -66,9 +70,8 @@ async function appendDraft(client, rawMessage) {
 }
 
 async function createDraft(client, options) {
-  if (options.attachments.length === 0) {
-    console.log(`Skipping ${options.subject}: no PDFs found.`);
-    return;
+  if (options.attachments.length !== 5) {
+    throw new Error(`${options.subject}: expected 5 PDFs, found ${options.attachments.length}.`);
   }
 
   const rawMessage = await buildMessage(options);
@@ -87,12 +90,14 @@ async function main() {
     {
       bodyName: 'water',
       folder: path.join(root, 'Water Bill', args.month),
-      subject: `Cleveland Water Bills - ${args.month}`
+      subject: `Water Bills - ${args.month}`,
+      utilityLabel: 'Water'
     },
     {
       bodyName: 'sewer',
       folder: path.join(root, 'Sewer Bill', args.month),
-      subject: `NEORSD Sewer Bills - ${args.month}`
+      subject: `Sewer Bills - ${args.month}`,
+      utilityLabel: 'Sewer'
     }
   ];
 
@@ -109,7 +114,7 @@ async function main() {
   await client.connect();
   try {
     for (const job of jobs) {
-      const attachments = await pdfAttachments(job.folder);
+      const attachments = await pdfAttachments(job.folder, job.utilityLabel);
       await createDraft(client, {
         attachments,
         from: gmailAddress,
