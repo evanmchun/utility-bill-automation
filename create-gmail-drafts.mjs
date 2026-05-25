@@ -28,6 +28,24 @@ function requireEnv(name) {
   return value;
 }
 
+function gmailAppPassword() {
+  return requireEnv('GMAIL_APP_PASSWORD').replace(/\s+/g, '');
+}
+
+async function withTimeout(label, promise, timeoutMs = 60000) {
+  let timeout;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timeout = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs / 1000}s`)), timeoutMs);
+      })
+    ]);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function pdfAttachments(folder, utilityLabel) {
   const entries = await fs.readdir(folder, { withFileTypes: true }).catch((error) => {
     if (error.code === 'ENOENT') return [];
@@ -66,7 +84,7 @@ async function buildMessage({ from, to, subject, text, attachments }) {
 }
 
 async function appendDraft(client, rawMessage) {
-  await client.append('[Gmail]/Drafts', rawMessage, ['\\Draft'], new Date());
+  await withTimeout('Appending Gmail draft', client.append('[Gmail]/Drafts', rawMessage, ['\\Draft'], new Date()));
 }
 
 async function createDraft(client, options) {
@@ -82,7 +100,7 @@ async function createDraft(client, options) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const gmailAddress = requireEnv('GMAIL_ADDRESS');
-  const gmailAppPassword = requireEnv('GMAIL_APP_PASSWORD');
+  const gmailPassword = gmailAppPassword();
   const recipient = requireEnv('UTILITY_BILLS_RECIPIENT');
 
   const root = process.cwd();
@@ -103,18 +121,24 @@ async function main() {
 
   const client = new ImapFlow({
     auth: {
-      pass: gmailAppPassword,
+      pass: gmailPassword,
       user: gmailAddress
     },
+    authTimeout: 30000,
+    connectionTimeout: 30000,
     host: 'imap.gmail.com',
+    logger: false,
     port: 993,
     secure: true
   });
 
-  await client.connect();
+  console.log(`Connecting to Gmail as ${gmailAddress}...`);
+  await withTimeout('Connecting to Gmail', client.connect());
+  console.log('Connected. Creating drafts...');
   try {
     for (const job of jobs) {
       const attachments = await pdfAttachments(job.folder, job.utilityLabel);
+      console.log(`${job.subject}: found ${attachments.length} attachment(s).`);
       await createDraft(client, {
         attachments,
         from: gmailAddress,
@@ -124,11 +148,11 @@ async function main() {
       });
     }
   } finally {
-    await client.logout();
+    await withTimeout('Logging out of Gmail', client.logout(), 15000).catch(() => {});
   }
 }
 
 main().catch((error) => {
-  console.error(error.message);
-  process.exitCode = 1;
+  console.error(error.responseText || error.response || error.message);
+  process.exit(1);
 });
