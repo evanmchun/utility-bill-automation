@@ -5,10 +5,13 @@
   "type": "module",
   "scripts": {
     "download": "node download-water-bills.mjs",
+    "usage": "node download-water-usage.mjs",
+    "test": "node --test",
     "download:visible": "set HEADLESS=false&& node download-water-bills.mjs"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
+    "nodemailer": "^9.0.3",
     "playwright": "^1.49.1"
   }
 }
