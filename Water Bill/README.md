@@ -77,7 +77,9 @@ The repository workflow at `.github/workflows/water-usage-monitor.yml` runs the 
 - `ALERT_EMAIL_TO`
 - `GMAIL_APP_PASSWORD`
 
-The workflow keeps alert history in a GitHub Actions cache to avoid sending the same reading repeatedly, uploads the refreshed HTML report as a private run artifact, and reports a failed portal login or script run as a failed workflow.
+The workflow retains alert history in a GitHub Actions cache, uploads the refreshed HTML report as a private run artifact, and reports a failed portal login or script run as a failed workflow.
+
+Set `WATER_ALERT_REPEAT_EVERY_RUN=true` in a scheduled environment to send another email every time the monitor runs while the current reading remains above an alert threshold. The GitHub workflow enables this repeat-until-normal behavior.
 
 ## Files
 

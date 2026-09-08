@@ -219,6 +219,7 @@ async function sendAlertEmail(alerts, config) {
 export async function processUsageAlerts(rows, hourlyRows, unit, workingDirectory = process.cwd()) {
   const enabled = (process.env.WATER_ALERTS_ENABLED || 'false').toLowerCase() === 'true';
   if (!enabled) return { enabled: false, detected: 0, sent: 0 };
+  const repeatEveryRun = (process.env.WATER_ALERT_REPEAT_EVERY_RUN || 'false').toLowerCase() === 'true';
 
   const config = {
     from: requiredEmailEnv('ALERT_EMAIL_FROM'),
@@ -240,15 +241,17 @@ export async function processUsageAlerts(rows, hourlyRows, unit, workingDirector
     ...detectHourlyUsageAlerts(hourlyRows, unit, options)
   ];
   const state = await loadAlertState(statePath);
-  const unsentAlerts = alerts.filter((alert) => !state.sent[alert.key]);
+  const unsentAlerts = repeatEveryRun
+    ? alerts
+    : alerts.filter((alert) => !state.sent[alert.key]);
 
   if (unsentAlerts.length === 0) {
-    return { enabled: true, detected: alerts.length, sent: 0 };
+    return { enabled: true, detected: alerts.length, sent: 0, repeatEveryRun };
   }
 
   await sendAlertEmail(unsentAlerts, config);
   const sentAt = new Date().toISOString();
   for (const alert of unsentAlerts) state.sent[alert.key] = sentAt;
   await saveAlertState(statePath, state);
-  return { enabled: true, detected: alerts.length, sent: 1, levelsSent: unsentAlerts.length };
+  return { enabled: true, detected: alerts.length, sent: 1, levelsSent: unsentAlerts.length, repeatEveryRun };
 }
