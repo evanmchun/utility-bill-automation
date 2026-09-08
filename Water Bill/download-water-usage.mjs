@@ -15,6 +15,7 @@ function parseArgs(argv) {
     unit: 'Gallons',
     output: null,
     html: null,
+    summary: null,
     headless: (process.env.HEADLESS || 'true').toLowerCase() !== 'false'
   };
 
@@ -33,6 +34,8 @@ function parseArgs(argv) {
     else if (arg.startsWith('--output=')) args.output = arg.slice('--output='.length);
     else if (arg === '--html') args.html = argv[++i];
     else if (arg.startsWith('--html=')) args.html = arg.slice('--html='.length);
+    else if (arg === '--summary') args.summary = argv[++i];
+    else if (arg.startsWith('--summary=')) args.summary = arg.slice('--summary='.length);
   }
 
   if (!Number.isInteger(args.days) || args.days < 1 || args.days > 31) {
@@ -811,6 +814,65 @@ async function writeHtmlReport(rows, hourlyRows, outputPath, unit, days, hourlyD
   return resolvedPath;
 }
 
+function markdownEscape(value) {
+  return String(value ?? '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+}
+
+async function writeMarkdownSummary(rows, hourlyRows, outputPath, unit, days, hourlyDays) {
+  const dailyLimitGallons = Number(process.env.WATER_ALERT_DAILY_LIMIT_GALLONS || 200);
+  const hourlyLimitGallons = Number(process.env.WATER_ALERT_HOURLY_LIMIT_GALLONS || 150);
+  const gallonsScale = unit === 'MCF' ? 1 / GALLONS_PER_MCF : 1;
+  const dailyLimit = dailyLimitGallons * gallonsScale;
+  const hourlyLimit = hourlyLimitGallons * gallonsScale;
+  const hourlyGroups = new Map(groupedRows(hourlyRows).map((group) => [
+    `${group[0].account}|${group[0].meter}`,
+    group
+  ]));
+  const lines = [
+    '# Cleveland Water usage report',
+    '',
+    `Generated ${new Date().toISOString()}. Daily window: ${days} readings. Hourly window: ${hourlyDays} days.`,
+    '',
+    `Alert thresholds: ${formatUsage(hourlyLimit, unit)} per hour; more than ${formatUsage(dailyLimit, unit)} per day.`,
+    '',
+    '| Property | Latest daily | Highest daily | Latest hourly | Highest hourly | Status |',
+    '|---|---:|---:|---:|---:|---|'
+  ];
+
+  let alertCount = 0;
+  for (const dailyRows of groupedRows(rows)) {
+    const first = dailyRows[0];
+    const usableDaily = dailyRows.filter((row) => row.usage != null);
+    const latestDaily = usableDaily.at(-1);
+    const highestDaily = usableDaily.length > 0
+      ? usableDaily.reduce((max, row) => row.usage > max.usage ? row : max)
+      : null;
+    const accountHourlyRows = hourlyGroups.get(`${first.account}|${first.meter}`) || [];
+    const usableHourly = accountHourlyRows.filter((row) => row.usage != null);
+    const latestHourly = usableHourly.at(-1);
+    const highestHourly = usableHourly.length > 0
+      ? usableHourly.reduce((max, row) => row.usage > max.usage ? row : max)
+      : null;
+    const reasons = [];
+    if (latestDaily?.usage > dailyLimit) reasons.push('daily high');
+    if (latestHourly?.usage >= hourlyLimit) reasons.push('hourly high');
+    if (reasons.length > 0) alertCount += 1;
+    const status = reasons.length > 0 ? `ALERT: ${reasons.join(', ')}` : 'Normal';
+    const dailyText = latestDaily ? `${formatUsage(latestDaily.usage, unit)} (${latestDaily.date})` : 'No data';
+    const dailyHighText = highestDaily ? `${formatUsage(highestDaily.usage, unit)} (${highestDaily.date})` : 'No data';
+    const hourlyText = latestHourly ? `${formatUsage(latestHourly.usage, unit)} (${latestHourly.date})` : 'No data';
+    const hourlyHighText = highestHourly ? `${formatUsage(highestHourly.usage, unit)} (${highestHourly.date})` : 'No data';
+    lines.push(`| ${markdownEscape(first.address || first.account)} | ${markdownEscape(dailyText)} | ${markdownEscape(dailyHighText)} | ${markdownEscape(hourlyText)} | ${markdownEscape(hourlyHighText)} | ${markdownEscape(status)} |`);
+  }
+
+  lines.splice(3, 0, `**${alertCount} ${alertCount === 1 ? 'property needs' : 'properties need'} attention based on the latest available readings.**`, '');
+  lines.push('', 'The detailed HTML report is available in this run\'s Artifacts section. Cleveland Water data may be delayed; timestamps above show the latest readings available from the portal.');
+  const resolvedPath = path.resolve(outputPath);
+  await fs.mkdir(path.dirname(resolvedPath), { recursive: true });
+  await fs.writeFile(resolvedPath, `${lines.join('\n')}\n`, { flag: 'a' });
+  return resolvedPath;
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const username = requireEnv('CLEVELANDWATER_USERNAME');
@@ -866,6 +928,12 @@ async function main() {
       const filePath = await writeHtmlReport(rows, hourlyRows, args.html, args.unit, args.days, args.hourlyDays);
       console.log('');
       console.log(`Saved HTML report: ${filePath}`);
+    }
+
+    if (args.summary) {
+      const filePath = await writeMarkdownSummary(rows, hourlyRows, args.summary, args.unit, args.days, args.hourlyDays);
+      console.log('');
+      console.log(`Saved Markdown summary: ${filePath}`);
     }
   } finally {
     await context.close();

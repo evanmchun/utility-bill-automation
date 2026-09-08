@@ -45,6 +45,7 @@ node .\download-water-usage.mjs --days 10
 node .\download-water-usage.mjs --account 8513827190
 node .\download-water-usage.mjs --output .\water-usage.csv
 node .\download-water-usage.mjs --days 30 --hourly-days 3 --html .\water-usage-report.html
+node .\download-water-usage.mjs --days 30 --hourly-days 3 --summary .\water-usage-summary.md
 ```
 
 ## Email alerts for unusually high usage
@@ -80,6 +81,8 @@ The repository workflow at `.github/workflows/water-usage-monitor.yml` runs the 
 The workflow retains alert history in a GitHub Actions cache, uploads the refreshed HTML report as a private run artifact, and reports a failed portal login or script run as a failed workflow.
 
 Set `WATER_ALERT_REPEAT_EVERY_RUN=true` in a scheduled environment to send another email every time the monitor runs while the current reading remains above an alert threshold. The GitHub workflow enables this repeat-until-normal behavior.
+
+Each successful GitHub Actions run also writes a private online run summary containing the latest and highest daily and hourly readings for every property. The detailed HTML remains available as a private downloadable artifact.
 
 ## Files
 
