@@ -60,7 +60,7 @@ jobs:
           WATER_ALERT_BASELINE_DAYS: '14'
           WATER_ALERT_STATE_FILE: .water-usage-alert-state.json
           HEADLESS: 'true'
-        run: node ./download-water-usage.mjs --days 30 --hourly-days 3 --html ./water-usage-report.html
+        run: node ./download-water-usage.mjs --days 30 --hourly-days 3 --html ./water-usage-report.html --summary "${GITHUB_STEP_SUMMARY}"
 
       - name: Save alert history
         if: always() && hashFiles('Water Bill/.water-usage-alert-state.json') != ''
