@@ -50,6 +50,7 @@ jobs:
           CLEVELANDWATER_USERNAME: ${{ secrets.CLEVELANDWATER_USERNAME }}
           CLEVELANDWATER_PASSWORD: ${{ secrets.CLEVELANDWATER_PASSWORD }}
           WATER_ALERTS_ENABLED: 'true'
+          WATER_ALERT_REPEAT_EVERY_RUN: 'true'
           ALERT_EMAIL_FROM: ${{ secrets.ALERT_EMAIL_FROM }}
           ALERT_EMAIL_TO: ${{ secrets.ALERT_EMAIL_TO }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
