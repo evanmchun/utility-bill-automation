@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { detectHourlyUsageAlerts } from './water-usage-alerts.mjs';
+import { detectDailyUsageAlerts, detectHourlyUsageAlerts } from './water-usage-alerts.mjs';
 
 function reading(usage, rawDate = '2026-09-08 12:00:00') {
   return {
@@ -39,4 +39,13 @@ test('creates one alert per property using each latest reading', () => {
   ], 'Gallons');
   assert.equal(alerts.length, 2);
   assert.deepEqual(alerts.map((alert) => alert.account), ['123', '456']);
+});
+
+test('daily usage alerts only when the latest reading is over 350 gallons', () => {
+  const atLimit = detectDailyUsageAlerts([reading(350)], 'Gallons');
+  const overLimit = detectDailyUsageAlerts([reading(350.1)], 'Gallons');
+
+  assert.equal(atLimit.length, 0);
+  assert.equal(overLimit.length, 1);
+  assert.equal(overLimit[0].thresholdGallons, 350);
 });

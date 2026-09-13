@@ -819,7 +819,7 @@ function markdownEscape(value) {
 }
 
 async function writeMarkdownSummary(rows, hourlyRows, outputPath, unit, days, hourlyDays) {
-  const dailyLimitGallons = Number(process.env.WATER_ALERT_DAILY_LIMIT_GALLONS || 200);
+  const dailyLimitGallons = Number(process.env.WATER_ALERT_DAILY_LIMIT_GALLONS || 350);
   const hourlyLimitGallons = Number(process.env.WATER_ALERT_HOURLY_LIMIT_GALLONS || 150);
   const gallonsScale = unit === 'MCF' ? 1 / GALLONS_PER_MCF : 1;
   const dailyLimit = dailyLimitGallons * gallonsScale;

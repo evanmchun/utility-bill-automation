@@ -50,7 +50,7 @@ node .\download-water-usage.mjs --days 30 --hourly-days 3 --summary .\water-usag
 
 ## Email alerts for unusually high usage
 
-The usage script sends a Gmail alert when the latest hourly usage reaches 150 gallons or the latest daily usage goes above 200 gallons. Daily alerts repeat at 300, 400, 500 gallons, and every additional 100-gallon level. Each property, reading, and level is recorded so the same event is not emailed twice. The prior 14-day median is included with daily alerts for context but does not change the thresholds.
+The usage script sends a Gmail alert when the latest hourly usage reaches 150 gallons or the latest daily usage goes above 350 gallons. Daily alerts repeat at 450, 550, 650 gallons, and every additional 100-gallon level. Each property, reading, and level is recorded so the same event is not emailed twice. The prior 14-day median is included with daily alerts for context but does not change the thresholds.
 
 Turn on two-step verification for the sending Google account and create a Google App Password. Add these lines to `.env`:
 
@@ -59,7 +59,7 @@ WATER_ALERTS_ENABLED=true
 ALERT_EMAIL_FROM=your-email@gmail.com
 ALERT_EMAIL_TO=recipient@example.com
 GMAIL_APP_PASSWORD=your-16-digit-app-password
-WATER_ALERT_DAILY_LIMIT_GALLONS=200
+WATER_ALERT_DAILY_LIMIT_GALLONS=350
 WATER_ALERT_HOURLY_LIMIT_GALLONS=150
 WATER_ALERT_INCREMENT_GALLONS=100
 ```

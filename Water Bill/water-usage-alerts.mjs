@@ -3,7 +3,7 @@ import path from 'node:path';
 import nodemailer from 'nodemailer';
 
 const GALLONS_PER_MCF = 7480;
-const DEFAULT_DAILY_LIMIT_GALLONS = 200;
+const DEFAULT_DAILY_LIMIT_GALLONS = 350;
 const DEFAULT_HOURLY_LIMIT_GALLONS = 150;
 const DEFAULT_ALERT_INCREMENT_GALLONS = 100;
 const DEFAULT_BASELINE_DAYS = 14;
